@@ -3,14 +3,16 @@ use std::{collections::HashMap, sync::Mutex};
 use rocket::State;
 use serde::{Deserialize, Serialize};
 
-use crate::{project::Project, team::Team, user::User};
+use crate::{group::Group, project::Project, task::Task, team::Team, user::User};
 
 #[derive(Serialize, Deserialize)]
 pub struct Database {
     pub users: HashMap<u128, User>,
     pub teams: HashMap<u128, Team>,
 
-    pub projects: HashMap<u128, Project>
+    pub projects: HashMap<u128, Project>,
+    pub groups: HashMap<u128, Group>,
+    pub tasks: HashMap<u128, Task>
 }
 impl Database {
     pub fn save(&self) {
@@ -23,7 +25,9 @@ impl Database {
         let result = Database {
             users: User::load(),
             teams: Team::load(),
-            projects: Project::load()
+            projects: Project::load(),
+            groups: Group::load(),
+            tasks: Task::load()
         };
 
         result

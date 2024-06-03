@@ -45,6 +45,8 @@ fn rocket() -> _ {
         .mount("/task/edit_task", routes![task::edit_task])
         .mount("/task/assign_task", routes![task::assign_task])
         .mount("/task/toggle_assign_task", routes![task::toggle_assign_task])
+        .mount("/task/complete_task", routes![task::complete_task])
+        .mount("/task/toggle_complete_task", routes![task::toggle_complete_task])
 
         .attach(cors::CORS)
 }

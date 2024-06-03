@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, fs, sync::Mutex};
 
 use rand::Rng;
 use rocket::State;
 use serde::{Deserialize, Serialize};
 
-use crate::{database::Database, login_info::{LoginInformation, LoginResult}, task::{self, Task}, utils};
+use crate::{database::Database, login_info::{LoginInformation, LoginResult}, project::Project, task::{self, Task}, utils};
 
 pub const GROUP_ID_MAX: u128 = 4294967296u128; // 16^8, 2^32s
 
@@ -15,9 +15,13 @@ pub struct Group {
     pub tasks: HashMap<u128, Task>
 }
 impl Group {
-    // pub fn create_task(Task) {
+    pub fn save(db: &Database) {
+        fs::write("data/grouos.json", serde_json::to_string_pretty(&db.projects).unwrap()).unwrap();
+    }
 
-    // }
+    pub fn load() -> HashMap<u128, Group> {
+        serde_json::from_str(fs::read_to_string("data/groups.json").unwrap().as_str()).unwrap()
+    }
 
     pub fn generate_task_id(&self) -> u128 {
         let fallback = self.tasks
@@ -38,11 +42,14 @@ impl Group {
         fallback
     }
 
-    pub fn create_task(&mut self, title: String, description: String) {
-        self.tasks.insert(self.generate_task_id(), Task {
+    pub fn create_task(&mut self, title: String, description: String, species: task::Species) {
+        let id = Task::generate_id();
+        self.tasks.insert(id, Task {
+            id,
             title,
             description,
-            assigned: vec![]
+            assigned: vec![],
+            species
         });
     }
 
@@ -78,13 +85,16 @@ pub fn create_group(db: &State<Mutex<Database>>, login: LoginInformation, projec
     }    
 }
 
-#[post("/<project_id>/<group_id>", data="<login>")]
-pub fn delete_group(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128) -> String {
+#[post("/<group_id>", data="<login>")]
+pub fn delete_group(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
         LoginResult::Success(_) => {
-            db.projects.get_mut(&project_id).unwrap().delete_group(group_id);
+            if db.groups.contains_key(&group_id) {
+                db.groups.remove(&group_id);
+            }
+            // db.groups.get_mut(&group_id).unwrap().delete_group(group_id);
             db.save();
             utils::parse_response(Ok("success".to_string()))
         },
@@ -92,13 +102,14 @@ pub fn delete_group(db: &State<Mutex<Database>>, login: LoginInformation, projec
     }    
 }
 
-#[post("/<project_id>/<group_id>/<name>", data="<login>")]
-pub fn edit_group(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, name: String) -> String {
+#[post("/<group_id>/<name>", data="<login>")]
+pub fn edit_group(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128, name: String) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
         LoginResult::Success(_) => {
-            db.projects.get_mut(&project_id).unwrap().edit_group(group_id, utils::decode_uri(name));
+            match db.groups.
+            // db.projects.get_mut(&project_id).unwrap().edit_group(group_id, utils::decode_uri(name));
             db.save();
             utils::parse_response(Ok("success".to_string()))
         },
