@@ -12,58 +12,65 @@ pub const GROUP_ID_MAX: u128 = 4294967296u128; // 16^8, 2^32s
 pub struct Group {
     pub name: String,
 
-    pub tasks: HashMap<u128, Task>
+    pub tasks: Vec<u128>
 }
 impl Group {
     pub fn save(db: &Database) {
-        fs::write("data/grouos.json", serde_json::to_string_pretty(&db.projects).unwrap()).unwrap();
+        fs::write("data/groups.json", serde_json::to_string_pretty(&db.groups).unwrap()).unwrap();
     }
 
     pub fn load() -> HashMap<u128, Group> {
         serde_json::from_str(fs::read_to_string("data/groups.json").unwrap().as_str()).unwrap()
     }
 
-    pub fn generate_task_id(&self) -> u128 {
-        let fallback = self.tasks
-            .keys()
-            .max()
-            .map_or(0, |i| i + 1);
-
-        let mut rng = rand::thread_rng();
-        for _ in 0..1000 {
-            // try generate for 1k times, else, resort to fallback
-            let candidate = rng.gen_range(0..task::TASK_ID_MAX);
-            if self.tasks.contains_key(&candidate) {
-                continue;
+    pub fn parent_of_task(db: &Database, task_id: u128) -> Option<u128> {
+        for (i, g) in &db.groups {
+            if g.tasks.contains(&task_id) {
+                return Some(*i);
             }
-
-            return candidate;
         }
-        fallback
+        None
     }
 
-    pub fn create_task(&mut self, title: String, description: String, species: task::Species) {
-        let id = Task::generate_id();
-        self.tasks.insert(id, Task {
-            id,
-            title,
-            description,
-            assigned: vec![],
-            species
-        });
-    }
-
-    pub fn delete_task(&mut self, task_id: u128) {
-        if self.tasks.contains_key(&task_id) {
-            self.tasks.remove(&task_id);
+    pub fn create(db: &mut Database, project_id: &u128, name: String) {
+        match db.projects.get_mut(&project_id) {
+            Some(p) => {
+                let id = utils::generate_id(db.groups.keys().map(|i| *i).collect::<Vec<u128>>(), GROUP_ID_MAX);
+                p.groups.push(id);
+                db.groups.insert(id, Group {
+                    name,
+                    tasks: vec![]
+                });
+                db.save();
+            },
+            None => {}
         }
     }
 
-    pub fn edit_task(&mut self, task_id: u128, title: String, description: String) {
-        match self.tasks.get_mut(&task_id) {
-            Some(t) => {
-                t.title = title;
-                t.description = description;
+    pub fn delete(db: &mut Database, group_id: u128) {
+        if db.groups.contains_key(&group_id) {
+            match Project::parent_of_group(db, group_id).map_or(None, |i| db.projects.get_mut(&i)) {
+                Some(p) => {
+                    let indices = p.groups.iter().enumerate().map(|(i, e)| (i, *e)).filter(|(_, g)| *g == group_id).collect::<Vec<(usize, u128)>>();
+                    if !indices.is_empty() {
+                        p.groups.remove(indices[0].0);
+                        for t in db.groups.get(&group_id).unwrap().tasks.clone() {
+                            Task::delete(db, t);
+                        }
+                        db.groups.remove(&group_id);
+                        db.save();
+                    }
+                },
+                None => {}
+            }
+        }
+    }
+
+    pub fn edit(db: &mut Database, group_id: u128, name: String) {
+        match db.groups.get_mut(&group_id) {
+            Some(g) => {
+                g.name = name;
+                db.save()
             },
             None => {}
         }
@@ -72,46 +79,39 @@ impl Group {
 
 // #region api calls
 #[post("/<project_id>/<name>", data="<login>")]
-pub fn create_group(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, name: String) -> String {
+pub fn create(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, name: String) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
         LoginResult::Success(_) => {
-            db.projects.get_mut(&project_id).unwrap().create_group(utils::decode_uri(name));
-            db.save();
-            utils::parse_response(Ok("success".to_string()))
+            Group::create(&mut db, &project_id, name);
+            utils::parse_response(Ok("success"))
         },
         _ => utils::parse_response(Err(result))
-    }    
+    }
 }
 
 #[post("/<group_id>", data="<login>")]
-pub fn delete_group(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128) -> String {
+pub fn delete(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
         LoginResult::Success(_) => {
-            if db.groups.contains_key(&group_id) {
-                db.groups.remove(&group_id);
-            }
-            // db.groups.get_mut(&group_id).unwrap().delete_group(group_id);
-            db.save();
-            utils::parse_response(Ok("success".to_string()))
+            Group::delete(&mut db, group_id);
+            utils::parse_response(Ok("success"))
         },
         _ => utils::parse_response(Err(result))
     }    
 }
 
 #[post("/<group_id>/<name>", data="<login>")]
-pub fn edit_group(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128, name: String) -> String {
+pub fn edit(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128, name: String) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
         LoginResult::Success(_) => {
-            match db.groups.
-            // db.projects.get_mut(&project_id).unwrap().edit_group(group_id, utils::decode_uri(name));
-            db.save();
-            utils::parse_response(Ok("success".to_string()))
+            Group::edit(&mut db, group_id, name);
+            utils::parse_response(Ok("success"))
         },
         _ => utils::parse_response(Err(result))
     }    

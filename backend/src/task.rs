@@ -5,7 +5,7 @@ use rocket::State;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 
-use crate::{database::Database, login_info::{LoginInformation, LoginResult}, utils};
+use crate::{database::Database, group::Group, login_info::{LoginInformation, LoginResult}, utils};
 
 pub const TASK_ID_MAX: u128 = 4294967296u128; // 16^8, 2^32
 
@@ -21,31 +21,58 @@ pub struct Task {
 }
 impl Task {
     pub fn save(db: &Database) {
-        fs::write("data/tasks.json", serde_json::to_string_pretty(&db.projects).unwrap()).unwrap();
+        fs::write("data/tasks.json", serde_json::to_string_pretty(&db.tasks).unwrap()).unwrap();
     }
 
     pub fn load() -> HashMap<u128, Task> {
         serde_json::from_str(fs::read_to_string("data/tasks.json").unwrap().as_str()).unwrap()
     }
 
-    pub fn generate_id(db: &Database) -> u128 {
-        let fallback = db.tasks
-            .keys()
-            .max()
-            .map_or(0, |i| i + 1);
-
-        let mut rng = rand::thread_rng();
-        for _ in 0..1000 {
-            // try generate for 1k times, else, resort to fallback
-            let candidate = rng.gen_range(0..TASK_ID_MAX);
-            if db.tasks.contains_key(&candidate) {
-                continue;
-            }
-
-            return candidate;
+    pub fn create(db: &mut Database, group_id: u128, title: String, description: String, species: Species) {
+        match db.groups.get_mut(&group_id) {
+            Some(g) => {
+                let id = utils::generate_id(db.tasks.keys().map(|k| *k).collect::<Vec<u128>>(), TASK_ID_MAX);
+                g.tasks.push(id);
+                db.tasks.insert(id, Task {
+                    id,
+                    title,
+                    description,
+                    assigned: vec![],
+                    species
+                });
+                db.save();
+            },
+            None => {}
         }
-        fallback
     }
+
+    pub fn delete(db: &mut Database, task_id: u128) {
+        if db.tasks.contains_key(&task_id) {
+            match Group::parent_of_task(&db, task_id).map_or(None, |i| db.groups.get_mut(&i)) {
+                Some(g) => {
+                    let indices = g.tasks.iter().enumerate().map(|(i, e)| (i, *e)).filter(|(_, t)| *t == task_id).collect::<Vec<(usize, u128)>>();
+                    if !indices.is_empty() {
+                        g.tasks.remove(indices[0].0);
+                        db.tasks.remove(&task_id);
+                        db.save();
+                    }
+                },
+                None => {}
+            }
+        }
+    }
+
+    pub fn edit(db: &mut Database, task_id: u128, title: String, description: String) {
+        match db.tasks.get_mut(&task_id) {
+            Some(t) => {
+                t.title = title;
+                t.description = description;
+                db.save();
+            },
+            None => {}
+        }
+    }
+
 
     pub fn assign(&mut self, user_id: u128, state: bool) {
         if state {
@@ -93,31 +120,86 @@ impl Task {
 }
 #[derive(Serialize, Deserialize, Clone, EnumString)]
 pub enum Species {
+    #[strum(ascii_case_insensitive)]
     Task(bool),
+    #[strum(ascii_case_insensitive)]
     Event
 }
 
 // #region api calls
-#[post("/<project_id>/<group_id>/<title>/<description>/<raw_species>", data="<login>")]
-pub fn create_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, title: String, description: String, raw_species: String) -> String {
+#[post("/<group_id>/<title>/<description>/<raw_species>", data="<login>")]
+pub fn create(db: &State<Mutex<Database>>, login: LoginInformation, group_id: u128, title: String, description: String, raw_species: String) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => {
-                    let species = match Species::from_str(&raw_species) {
-                        Ok(i) => match i {
-                            Species::Task(_) => Species::Task(false),
-                            _ => Species::Event
-                        },
-                        Err(_) => Species::Event
-                    };
-                    g.create_task(utils::decode_uri(title), utils::decode_uri(description), species);
-                    db.save();
-                    utils::parse_response(Ok("success"))
+        LoginResult::Success(_) => {
+            let species = match Species::from_str(&raw_species) {
+                Ok(i) => match i {
+                    Species::Task(_) => Species::Task(false),
+                    _ => Species::Event
                 },
-                None => utils::parse_response(Err(""))
+                Err(_) => Species::Event
+            };
+            Task::create(&mut db, group_id, utils::decode_uri(title), utils::decode_uri(description), species);
+            utils::parse_response(Ok("success"))
+        },
+        _ => utils::parse_response(Err(result))
+    }
+}
+
+#[post("/<task_id>/<title>/<description>", data="<login>")]
+pub fn edit(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128, title: String, description: String) -> String {
+    let mut db = db.lock().unwrap();
+    let result = login.login(&mut db);
+    match result {
+        LoginResult::Success(_) => {
+            Task::edit(&mut db, task_id, utils::decode_uri(title), utils::decode_uri(description));
+            utils::parse_response(Ok("success"))
+        }
+        _ => utils::parse_response(Err(result))
+    }
+}
+
+#[post("/<task_id>", data="<login>")]
+pub fn delete(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128) -> String {
+    let mut db = db.lock().unwrap();
+    let result = login.login(&mut db);
+    match result {
+        LoginResult::Success(_) => {
+            Task::delete(&mut db, task_id);
+            utils::parse_response(Ok("success"))
+        },
+        _ => utils::parse_response(Err(result))
+    }
+}
+
+#[post("/<task_id>/<user_id>/<state>", data="<login>")]
+pub fn assign(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128, user_id: u128, state: bool) -> String {
+    let mut db = db.lock().unwrap();
+    let result = login.login(&mut db);
+    match result {
+        LoginResult::Success(_) => match db.tasks.get_mut(&task_id) {
+            Some(t) => {
+                t.assign(user_id, state);
+                db.save();
+                utils::parse_response(Ok("success"))
+            },
+            None => utils::parse_response(Ok(""))
+        },
+        _ => utils::parse_response(Err(result))
+    }
+}
+
+#[post("/<task_id>/<user_id>", data="<login>")]
+pub fn toggle_assign(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128, user_id: u128) -> String {
+    let mut db = db.lock().unwrap();
+    let result = login.login(&mut db);
+    match result {
+        LoginResult::Success(_) => match db.tasks.get_mut(&task_id) {
+            Some(t) => {
+                t.toggle_assign(user_id);
+                db.save();
+                utils::parse_response(Ok(""))
             },
             None => utils::parse_response(Err(""))
         },
@@ -125,19 +207,16 @@ pub fn create_task(db: &State<Mutex<Database>>, login: LoginInformation, project
     }
 }
 
-#[post("/<project_id>/<group_id>/<task_id>/<title>/<description>", data="<login>")]
-pub fn edit_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128, title: String, description: String) -> String {
+#[post("/<task_id>/<state>", data="<login>")]
+pub fn complete(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128, state: bool) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => {
-                    g.edit_task(task_id, utils::decode_uri(title), utils::decode_uri(description));
-                    db.save();
-                    utils::parse_response(Ok("success"))
-                },
-                None => utils::parse_response(Err(""))
+        LoginResult::Success(_) => match db.tasks.get_mut(&task_id) {
+            Some(t) => {
+                t.complete(state);
+                db.save();
+                utils::parse_response(Ok("success"))
             },
             None => utils::parse_response(Err(""))
         },
@@ -145,111 +224,16 @@ pub fn edit_task(db: &State<Mutex<Database>>, login: LoginInformation, project_i
     }
 }
 
-#[post("/<project_id>/<group_id>/<task_id>", data="<login>")]
-pub fn delete_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128) -> String {
+#[post("/<task_id>", data="<login>")]
+pub fn toggle_complete(db: &State<Mutex<Database>>, login: LoginInformation, task_id: u128) -> String {
     let mut db = db.lock().unwrap();
     let result = login.login(&mut db);
     match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => {
-                    g.delete_task(task_id);
-                    db.save();
-                    utils::parse_response(Ok("success"))
-                },
-                None => utils::parse_response(Err(""))
-            },
-            None => utils::parse_response(Err(""))
-        },
-        _ => utils::parse_response(Err(result))
-    }
-}
-
-#[post("/<project_id>/<group_id>/<task_id>/<user_id>/<state>", data="<login>")]
-pub fn assign_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128, user_id: u128, state: bool) -> String {
-    let mut db = db.lock().unwrap();
-    let result = login.login(&mut db);
-    match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => match g.tasks.get_mut(&task_id) {
-                    Some(t) => {
-                        t.assign(user_id, state);
-                        db.save();
-                        utils::parse_response(Ok("success"))
-                    },
-                    None => utils::parse_response(Err(""))
-                },
-                None => utils::parse_response(Err(""))
-            },
-            None => utils::parse_response(Err(""))
-        },
-        _ => utils::parse_response(Err(result))
-    }
-}
-
-#[post("/<project_id>/<group_id>/<task_id>/<user_id>", data="<login>")]
-pub fn toggle_assign_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128, user_id: u128) -> String {
-    let mut db = db.lock().unwrap();
-    let result = login.login(&mut db);
-    match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => match g.tasks.get_mut(&task_id) {
-                    Some(t) => {
-                        t.toggle_assign(user_id);
-                        db.save();
-                        utils::parse_response(Ok("success"))
-                    },
-                    None => utils::parse_response(Err(""))
-                },
-                None => utils::parse_response(Err(""))
-            },
-            None => utils::parse_response(Err(""))
-        },
-        _ => utils::parse_response(Err(result))
-    }
-}
-
-#[post("/<project_id>/<group_id>/<task_id>/<state>", data="<login>")]
-pub fn complete_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128, state: bool) -> String {
-    let mut db = db.lock().unwrap();
-    let result = login.login(&mut db);
-    match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => match g.tasks.get_mut(&task_id) {
-                    Some(t) => {
-                        t.complete(state);
-                        db.save();
-                        utils::parse_response(Ok("success"))
-                    },
-                    None => utils::parse_response(Err(""))
-                },
-                None => utils::parse_response(Err(""))
-            },
-            None => utils::parse_response(Err(""))
-        },
-        _ => utils::parse_response(Err(result))
-    }
-}
-
-#[post("/<project_id>/<group_id>/<task_id>", data="<login>")]
-pub fn toggle_complete_task(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u128, group_id: u128, task_id: u128) -> String {
-    let mut db = db.lock().unwrap();
-    let result = login.login(&mut db);
-    match result {
-        LoginResult::Success(_) => match db.projects.get_mut(&project_id) {
-            Some(p) => match p.groups.get_mut(&group_id) {
-                Some(g) => match g.tasks.get_mut(&task_id) {
-                    Some(t) => {
-                        t.toggle_complete();
-                        db.save();
-                        utils::parse_response(Ok("success"))
-                    },
-                    None => utils::parse_response(Err(""))
-                },
-                None => utils::parse_response(Err(""))
+        LoginResult::Success(_) => match db.tasks.get_mut(&task_id) {
+            Some(t) => {
+                t.toggle_complete();
+                db.save();
+                utils::parse_response(Ok("success"))
             },
             None => utils::parse_response(Err(""))
         },

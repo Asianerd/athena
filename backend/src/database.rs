@@ -18,7 +18,10 @@ impl Database {
     pub fn save(&self) {
         User::save(&self);
         Team::save(&self);
+        
         Project::save(&self);
+        Group::save(&self);
+        Task::save(&self);
     }
 
     pub fn load() -> Database {

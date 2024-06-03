@@ -8174,3 +8174,19 @@ pub fn decode_uri(i: String) -> String {
 pub fn encode_uri(i: String) -> String {
     urlencoding::encode(&i).to_string()
 }
+
+pub fn generate_id(indices: Vec<u128>, maximum: u128) -> u128 {
+    let fallback = indices.iter().max().map_or(0, |i| i + 1);
+
+    let mut rng = rand::thread_rng();
+    for _ in 0..1000 {
+        // try generate for 1k times, else, resort to fallback
+        let candidate = rng.gen_range(0..maximum);
+        if indices.contains(&candidate) {
+            continue;
+        }
+
+        return candidate;
+    }
+    fallback
+}
