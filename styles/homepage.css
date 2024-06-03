@@ -1,0 +1,177 @@
+:root {
+    --sidebar-width:40ch;
+}
+
+html, body {
+    background: #000;
+}
+
+h1 {
+    font-size:2.5rem;
+}
+
+h2 {
+    font-size:1.5rem;
+}
+
+#parent {
+    min-width: 100%;
+    min-height:100vh;
+}
+
+#overlay {
+    position:absolute;
+    top:0;
+
+    height:100vh;
+    width:100%;
+
+    padding:0;
+    margin:0;
+
+    &:has(> *[state="open"]) {
+        background:#0009;
+    }
+
+    #sidebar {
+        display:flex;
+        justify-content: space-between;
+        align-items: start;
+        flex-direction: column;
+
+        margin:0;
+        padding:2ch;
+
+        width: calc(var(--sidebar-width) - 4ch);
+        height:calc(100% - 4ch);
+        background:var(--primary);
+
+        transition-duration:0.3s;
+
+        &[state="closed"] {
+            transform:translateX(-100%);
+        }
+
+        & > div {
+            width:100%;
+        }
+
+        hr {
+            border-style:none;
+            height:2px;
+            border-radius:1000px;
+            background:var(--border-color);
+        }
+
+        #title {
+            
+        }
+
+        #projects {
+            margin-top:0.5em;
+
+            h1 {
+                font-size:2rem;
+                margin-bottom:0.3ch;
+                padding:0;
+            }
+
+            #container {
+                border-left-style:solid;
+                border-color:var(--border-color);
+                border-width:3px;
+
+                margin-top:1.5ch;
+                margin-left:1ch;
+                padding-left:1.2ch;
+
+                h2 {
+                    margin:0;
+                    padding:0.2em 1ch;
+                    border-radius:var(--border-radius);
+
+                    cursor:pointer;
+
+                    transition-duration:0.3s;
+
+                    &:hover {
+                        background:#5551;
+                    }
+
+                    &[selected] {
+                        background:var(--tertiary);
+                    }
+                }
+            }
+        }
+
+        #team {
+            margin-bottom:2ch;
+
+            h1 {
+                font-size:2rem;
+                margin-bottom:0.3ch;
+                padding:0;
+            }
+
+            #members {
+                margin-left:1ch;
+                overflow:hidden;
+
+                span {
+                    display:flex;
+                    justify-content: start;
+                    align-items: center;
+
+                    width: 100%;
+
+                    padding:1ch;
+
+                    border-bottom-style:solid;
+                    border-width:2px;
+                    border-color:var(--border-color);
+
+                    img {
+                        height:1.8rem;
+
+                        margin-right:1.8ch;
+                    }
+
+                    h2 {
+                        margin:0;
+
+                        cursor:pointer;
+                    }
+
+                    &:last-child {
+                        border-bottom-style: none;
+                    }
+                }
+            }
+        }
+
+        #self {
+            display:flex;
+            justify-content: space-between;
+            align-items: center;
+
+            margin:2ch 0 1ch 0;
+
+            img {
+                height:2rem;
+
+                cursor:pointer;
+            }
+
+            #username {
+                margin-left:1ch;
+            }
+
+            span {
+                display:flex;
+                align-items: center;
+                flex-direction: row;
+            }
+        }
+    }
+}
