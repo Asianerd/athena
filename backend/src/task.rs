@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fs, str::FromStr, sync::Mutex};
 
-use rand::Rng;
 use rocket::State;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;

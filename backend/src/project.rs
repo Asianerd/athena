@@ -63,6 +63,10 @@ impl Project {
             None => {}
         }
     }
+
+    pub fn fetch(db: &Database, project_id: u128) -> Option<Project> {
+        // match db.
+    }
 }
 
 #[derive(Serialize, Deserialize)]
