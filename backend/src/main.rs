@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 
+use project::fetch_by_ownership;
+
 #[macro_use] extern crate rocket;
 
 mod utils;
@@ -32,6 +34,7 @@ fn rocket() -> _ {
         .mount("/debug", routes![database::debug])
 
         .mount("/project/fetch", routes![project::fetch])
+        .mount("/project/fetch_by_ownership", routes![fetch_by_ownership])
         .mount("/project/create", routes![project::create])
         .mount("/project/delete", routes![project::delete])
         .mount("/project/edit", routes![project::edit])
@@ -47,6 +50,8 @@ fn rocket() -> _ {
         .mount("/task/toggle_assign", routes![task::toggle_assign])
         .mount("/task/complete", routes![task::complete])
         .mount("/task/toggle_complete", routes![task::toggle_complete])
+
+        .mount("/user/fetch_teams", routes![user::fetch_teams])
 
         .attach(cors::CORS)
 }

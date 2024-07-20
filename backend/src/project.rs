@@ -1,14 +1,15 @@
-use std::{collections::HashMap, fs, sync::Mutex};
+use std::{collections::HashMap, fs, str::FromStr, sync::Mutex};
 
 use rand::Rng;
 use rocket::State;
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumString;
 
 use crate::{database::Database, group::{self, Group}, login_info::{LoginInformation, LoginResult}, user::User, utils};
 
 pub const PROJECT_ID_MAX: u128 = 4294967296u128; // 16^8, 2^32
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Project {
     pub name: String,
 
@@ -65,13 +66,24 @@ impl Project {
     }
 
     pub fn fetch(db: &Database, project_id: u128) -> Option<Project> {
-        // match db.
+        match db.projects.get(&project_id) {
+            Some(p) => {
+                Some(p.clone())
+            },
+            None => None
+        }
+    }
+
+    pub fn fetch_by_ownership(db: &Database, ownership: Ownership) -> Vec<Project> {
+        db.projects.values().into_iter().filter(|i| i.owner == ownership).map(|p| p.clone()).collect::<Vec<Project>>()
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, EnumString)]
 pub enum Ownership {
+    #[strum(ascii_case_insensitive)]
     User(u128),
+    #[strum(ascii_case_insensitive)]
     Team(u128)
 }
 
@@ -122,8 +134,27 @@ pub fn fetch(db: &State<Mutex<Database>>, login: LoginInformation, project_id: u
     match result {
         LoginResult::Success(_) => {
             utils::parse_response(Ok(
-                db.projects.get(&project_id)
+                utils::parse_response(Ok(Project::fetch(&db, project_id)))
             ))
+        },
+        _ => utils::parse_response(Err(result))
+    }
+}
+
+#[post("/<owner_type>/<owner_id>", data="<login>")]
+pub fn fetch_by_ownership(db: &State<Mutex<Database>>, login: LoginInformation, owner_type: String, owner_id: u128) -> String {
+    let mut db = db.lock().unwrap();
+    let result = login.login(&mut db);
+    match result {
+        LoginResult::Success(_) => {
+            let ownership = match Ownership::from_str(&owner_type) {
+                Ok(t) => match t {
+                    Ownership::User(_) => Ownership::User(owner_id),
+                    Ownership::Team(_) => Ownership::Team(owner_id)
+                },
+                Err(_) => return utils::parse_response(Ok(""))
+            };
+            utils::parse_response(Ok(Project::fetch_by_ownership(&db, ownership)))
         },
         _ => utils::parse_response(Err(result))
     }

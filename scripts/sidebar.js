@@ -12,4 +12,9 @@ function sidebar_toggleTeamSelection() {
     }
 }
 
+sendPostRequest(`${ATHENA_BACKEND_ADDRESS}/user/fetch_teams`, login_info(), (r) => {
+    let response = JSON.parse(parseResponse(r));
+    console.log(response);
+})
+
 document.querySelector("#sidebar #self #username").innerHTML = username;

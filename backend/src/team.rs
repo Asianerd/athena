@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::Database;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Team {
     pub name: String,
 
@@ -20,7 +20,7 @@ impl Team {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Permissions {
     Admin,
 
@@ -29,3 +29,6 @@ pub enum Permissions {
 
     None
 }
+
+// #region api calls
+// #endregion
