@@ -1,4 +1,4 @@
-use rocket::http::{Header, Status};
+use rocket::http::Header;
 use rocket::{Request, Response};
 use rocket::fairing::{Fairing, Info, Kind};
 
@@ -14,8 +14,6 @@ impl Fairing for CORS {
     }
 
     async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
-        response.set_status(Status::Ok); // required for post protocol to overcome "preflight request" error thingy
-        // 
         response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
         response.set_header(Header::new("Access-Control-Allow-Methods", "POST, GET, PATCH, OPTIONS"));
         response.set_header(Header::new("Access-Control-Allow-Headers", "*"));

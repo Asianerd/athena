@@ -1,21 +1,23 @@
 use std::collections::HashMap;
 
+use sqlx::{Pool, Sqlite};
+
 use rocket::http::Status;
 use rocket::request::Request;
 use rocket::data::{self, Data, FromData};
 use rocket::outcome::Outcome;
 use serde::{Deserialize, Serialize};
 
-use crate::{database::Database, soterius, user::User};
+use crate::{soterius, user};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct LoginInformation {
     pub username: String,
     pub password: String
 }
 impl LoginInformation {
     // handles anything to do with password or logging in
-    pub fn login(&self, account_handler: &mut Database) -> LoginResult {
+    pub async fn login(&self, db: &Pool<Sqlite>) -> LoginResult {
         // check soterius if it exists first
 
         // if exists:
@@ -29,12 +31,16 @@ impl LoginInformation {
                     return LoginResult::PasswordWrong;
                 }
 
-                let athena_lookup = account_handler.fetch_user_id(&self.username);
-                if athena_lookup.is_none() {
-                    account_handler.users.insert(user_id, User {
-                        id: user_id,
-                        username: self.username.clone()
-                    });
+                let mantissa_lookup = user::User::lookup_user_id(&user_id, db).await;
+                if mantissa_lookup <= 0 {
+                    // no matching user ids in the database
+                    // insert into db
+                    sqlx::query("insert into user values ($1, $2);")
+                        .bind(user_id)
+                        .bind(self.username.clone())
+                        .execute(db)
+                        .await
+                        .unwrap();
                 }
 
                 return LoginResult::Success(user_id);
@@ -80,7 +86,7 @@ pub enum LoginInfoParseError {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum LoginResult {
-    Success(u128),
+    Success(i64),
     UsernameNoExist,
     PasswordNoExist, // consistency issue
 
