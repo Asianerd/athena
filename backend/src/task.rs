@@ -19,7 +19,8 @@ impl Into<Task> for RawTask {
             description: self.description.clone(),
             origin: self.origin,
             parent: self.parent,
-            children: vec![]
+            children: vec![],
+            branches: vec![]
         }
     }
 }
@@ -32,7 +33,8 @@ pub struct Task { // multi-dimensional dynamic linked list (or something like th
     pub description: String,
     pub origin: i64, // the task before this, -1 if starting task
     pub parent: i64, // if isnt -1, then its a subtask in a bigger task
-    pub children: Vec<Task>
+    pub children: Vec<Task>,
+    pub branches: Vec<Task>
 }
 impl Task {
     pub fn create_task(raw: Vec<RawTask>) -> Option<Task> {
@@ -44,6 +46,11 @@ impl Task {
         let mut parent: Option<Task> = None;
         for i in &raw {
             if i.origin == -1 {
+                if i.parent != -1 {
+                    // if true, then represents start of a children branch
+                    continue;
+                }
+
                 parent = Some(Task {
                     id: i.id,
                     project_id: i.project_id,
@@ -51,7 +58,8 @@ impl Task {
                     description: i.description.clone(),
                     origin: i.origin,
                     parent: i.parent,
-                    children: vec![]
+                    children: vec![],
+                    branches: vec![]
                 });
             }
         }
@@ -62,33 +70,34 @@ impl Task {
         // Task::remove_from_collection(parent.id, &mut raw);
         // premature optimization is the root of all evil
 
-        parent.find_all_children(&raw);
+        parent.find_all_branches(&raw);
+        // parent.find_all_children(collection);
 
         Some(parent)
 
     }
 
+    fn find_all_branches(&mut self, collection: &Vec<RawTask>) {
+        let mut branches = Task::next_branch(self.id, collection);
+        for i in &mut branches {
+            i.find_all_branches(collection);
+        }
+        self.branches = branches;
+    }
+
+    fn next_branch(raw: i64, collection: &Vec<RawTask>) -> Vec<Task> {
+        collection.iter().filter(|x| x.origin == raw).map(|x| Into::<Task>::into(x.clone())).collect()
+    }
+
+    fn next_children(raw: i64, collection: &Vec<RawTask>) -> Vec<Task> {
+        collection.iter().filter(|x| x.parent == raw).map(|x| Into::<Task>::into(x.clone())).collect()
+    }
+
     fn find_all_children(&mut self, collection: &Vec<RawTask>) {
-        let mut children = Task::next(self.id, collection);
+        let mut children = Task::next_children(self.id, collection);
         for i in &mut children {
             i.find_all_children(collection);
         }
         self.children = children;
-    }
-
-    fn next(raw: i64, collection: &Vec<RawTask>) -> Vec<Task> {
-        collection.iter().filter(|x| x.origin == raw).map(|x| Into::<Task>::into(x.clone())).collect()
-    }
-
-    fn remove_from_collection(raw: i64, collection: &mut Vec<RawTask>) {
-        let mut target: Option<usize> = None;
-        for (index, i) in collection.iter().enumerate() {
-            if i.id == raw {
-                target = Some(index);
-            }
-        }
-        if target.is_some() {
-            collection.remove(target.unwrap());
-        }
     }
 }
