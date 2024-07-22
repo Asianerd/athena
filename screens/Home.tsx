@@ -1,5 +1,6 @@
 import { Button, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { DefaultContainer, colorScheme, defaultFont, defaultFontBold, defaultFontItalic, fontSize } from "../constants/style";
+import { useEffect } from "react";
 
 function Home({navigation, route}: {navigation: any, route: any}) {
     const username = route.params.username;

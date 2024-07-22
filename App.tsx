@@ -1,3 +1,4 @@
+import './gesture-handler';
 import { NavigationContainer, StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
@@ -15,8 +16,19 @@ import {
 
 import Login from './screens/Login';
 import Home from './screens/Home';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
+const Drawer = createDrawerNavigator();
+
+function StackNavigator() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="login" component={Login} />
+            <Stack.Screen name="home" component={Home} />
+        </Stack.Navigator>
+    );
+}
 
 export const screenSize = {
     height: Dimensions.get("window").height,
@@ -28,10 +40,9 @@ function App(): React.JSX.Element {
 
     return (
         <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="login" component={Login} />
-                <Stack.Screen name="home" component={Home} />
-            </Stack.Navigator>
+            <Drawer.Navigator>
+                <Drawer.Screen name="stack" component={StackNavigator} />
+            </Drawer.Navigator>
         </NavigationContainer>
     );
 }

@@ -1,0 +1,45 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/SplineSansMono-Bold.ttf",
+      "sha1": "3de8fef9408c6232bacf7ac3236128310a89d5cf"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-BoldItalic.ttf",
+      "sha1": "ef0257965592da9f6b6bdd36dbaa3d0db56fbab0"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-Italic.ttf",
+      "sha1": "9bec72a4bb415edaebf8d4e61077836f7be069b7"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-Light.ttf",
+      "sha1": "9f88483ed3bdd199f533124539c65f66ae95a57e"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-LightItalic.ttf",
+      "sha1": "d0de810cd80553163162c35ae86071225ea0634c"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-Medium.ttf",
+      "sha1": "512b3027fb8b37aad0f6d56d1f43c105dbb03fbe"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-MediumItalic.ttf",
+      "sha1": "c125fb9689c3048056fd62752505f089a1ca707d"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-Regular.ttf",
+      "sha1": "df140d74ef1c16c87935b9a958b39bba543ad9e2"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-SemiBold.ttf",
+      "sha1": "9d7084ef70ca1c6b83dc23684d80020221603b14"
+    },
+    {
+      "path": "assets/fonts/SplineSansMono-SemiBoldItalic.ttf",
+      "sha1": "29195c1e14f6ec0fb049901bf12d01a4eec053cf"
+    }
+  ]
+}

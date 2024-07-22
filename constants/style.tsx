@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { ColorValue, SafeAreaView, StyleSheet, View } from "react-native"
 import Navbar from "../components/Navbar";
+import { isIOS } from "./utils";
 
 export const fontSize = {
     tiny: 13,

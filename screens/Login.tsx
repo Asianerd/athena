@@ -1,12 +1,14 @@
 import { Button, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { screenSize } from "../App";
-import React from "react";
+import React, { useEffect } from "react";
 import { colorScheme, defaultFont, defaultFontBold, defaultFontItalic, fontSize } from "../constants/style";
 import { SOTERIUS_BACKEND } from "../constants/networking";
 
 function Login({navigation}: {navigation: any}): React.JSX.Element {
-    navigation.navigate('home', { username:'han_yuji_', password: 'chronos' });
-    // here for debugging only
+    useEffect(() => {
+        navigation.navigate('home', { username:'han_yuji_', password: 'chronos' });
+        // here for debugging only
+    }, []);
 
     function attemptLogin(username: String, password: String) {
         fetch(`${SOTERIUS_BACKEND}/${state}`, {
