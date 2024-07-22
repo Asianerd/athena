@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use rand::prelude::*;
-
 use rocket::State;
 use serde::{Deserialize, Serialize};
 use sqlx::{prelude::FromRow, Pool, Sqlite};

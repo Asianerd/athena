@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
+use crate::pointer::Pointer;
+
 #[derive(FromRow, Serialize, Deserialize, Clone)]
-pub struct RawTask { // this is basically a linked list
+pub struct RawTask {
     pub id: i64,
     pub project_id: i64,
     pub title: String,
-    pub description: String,
-    pub origin: i64, // the task before this
-    pub parent: i64 // if isnt -1, then its a subtask in a bigger task
+    pub description: String
 }
 impl Into<Task> for RawTask {
     fn into(self) -> Task {
@@ -17,87 +19,36 @@ impl Into<Task> for RawTask {
             project_id: self.project_id,
             title: self.title.clone(),
             description: self.description.clone(),
-            origin: self.origin,
-            parent: self.parent,
-            children: vec![],
-            branches: vec![]
+            parents: vec![],
+            children: vec![]
         }
     }
 }
 
 #[derive(FromRow, Serialize, Deserialize, Clone)]
-pub struct Task { // multi-dimensional dynamic linked list (or something like that idk)
+pub struct Task { // multi-dimensional dynamic doubly linked list
     pub id: i64,
     pub project_id: i64,
     pub title: String,
     pub description: String,
-    pub origin: i64, // the task before this, -1 if starting task
-    pub parent: i64, // if isnt -1, then its a subtask in a bigger task
-    pub children: Vec<Task>,
-    pub branches: Vec<Task>
+
+    pub parents: Vec<i64>,
+    pub children: Vec<i64>
 }
 impl Task {
-    pub fn create_task(raw: Vec<RawTask>) -> Option<Task> {
-        if raw.is_empty() {
-            return None;
+    pub fn create_lookup_table(raw: Vec<RawTask>, pointers: Vec<Pointer>) -> HashMap<i64, Task> {
+        let mut result: HashMap<i64, Task> = HashMap::new();
+        for t in &raw {
+            result.insert(t.id, Task {
+                id: t.id,
+                project_id: t.project_id,
+                title: t.title.clone(),
+                description: t.description.clone(),
+                parents: Pointer::fetch_parents(t.id, &pointers),
+                children: Pointer::fetch_children(t.id, &pointers)
+            });
         }
-        let raw = raw.clone();
 
-        let mut parent: Option<Task> = None;
-        for i in &raw {
-            if i.origin == -1 {
-                if i.parent != -1 {
-                    // if true, then represents start of a children branch
-                    continue;
-                }
-
-                parent = Some(Task {
-                    id: i.id,
-                    project_id: i.project_id,
-                    title: i.title.clone(),
-                    description: i.description.clone(),
-                    origin: i.origin,
-                    parent: i.parent,
-                    children: vec![],
-                    branches: vec![]
-                });
-            }
-        }
-        if parent.is_none() {
-            return None;
-        }
-        let mut parent = parent.unwrap();
-        // Task::remove_from_collection(parent.id, &mut raw);
-        // premature optimization is the root of all evil
-
-        parent.find_all_branches(&raw);
-        // parent.find_all_children(collection);
-
-        Some(parent)
-
-    }
-
-    fn find_all_branches(&mut self, collection: &Vec<RawTask>) {
-        let mut branches = Task::next_branch(self.id, collection);
-        for i in &mut branches {
-            i.find_all_branches(collection);
-        }
-        self.branches = branches;
-    }
-
-    fn next_branch(raw: i64, collection: &Vec<RawTask>) -> Vec<Task> {
-        collection.iter().filter(|x| x.origin == raw).map(|x| Into::<Task>::into(x.clone())).collect()
-    }
-
-    fn next_children(raw: i64, collection: &Vec<RawTask>) -> Vec<Task> {
-        collection.iter().filter(|x| x.parent == raw).map(|x| Into::<Task>::into(x.clone())).collect()
-    }
-
-    fn find_all_children(&mut self, collection: &Vec<RawTask>) {
-        let mut children = Task::next_children(self.id, collection);
-        for i in &mut children {
-            i.find_all_children(collection);
-        }
-        self.children = children;
+        result
     }
 }

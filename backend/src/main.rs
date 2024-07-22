@@ -9,6 +9,8 @@ mod login_info;
 mod user;
 
 mod task;
+mod pointer;
+
 mod project;
 mod project_members;
 
@@ -24,6 +26,9 @@ async fn rocket() -> _ {
         .mount("/project/fetch/owned", routes![project::fetch_own_projects])
         .mount("/project/fetch/members", routes![project::fetch_project_members])
         .mount("/project/fetch/tasks", routes![project::fetch_tasks])
+
+        .mount("/pointer/create", routes![pointer::create_pointer])
+        .mount("/pointer/delete", routes![pointer::delete_pointer])
 
         .mount("/user/test", routes![user::test])
 }
