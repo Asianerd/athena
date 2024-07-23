@@ -105,7 +105,7 @@ function Login({navigation}: {navigation: any}): React.JSX.Element {
                 marginBottom:20
             }} /> */}
             <Text style={{ color:colorScheme.tertiary, fontSize: fontSize.large, fontFamily:defaultFontBold, marginBottom:20 }}>
-                athena
+                athena huh
             </Text>
             <TextInput style={loginStyles.input}
                 placeholder="username"

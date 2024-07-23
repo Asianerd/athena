@@ -30,7 +30,7 @@ export const DefaultContainer = ({children, menu}: {children?: any, menu: any}) 
         }}/>
         <SafeAreaView style={{
             flex:1,
-            backgroundColor:colorScheme.secondary
+            backgroundColor:colorScheme.background
         }}>
             <View style={{
                 flex:1,
@@ -38,7 +38,7 @@ export const DefaultContainer = ({children, menu}: {children?: any, menu: any}) 
             }}>
                 {children}
             </View>
-            <Navbar menu={menu} />
+            {/* <Navbar menu={menu} /> */}
         </SafeAreaView>
     </Fragment>);
 }
