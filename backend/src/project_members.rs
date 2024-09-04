@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{prelude::FromRow, Pool, Sqlite};
 
-use crate::{project::Project, user::User};
+use crate::{project::Project, user::User, utils::ValueInt};
 
 #[derive(FromRow, Serialize, Deserialize)]
 pub struct ProjectMembers {
@@ -24,5 +24,14 @@ impl ProjectMembers {
             .fetch_all(db)
             .await
             .unwrap()
+    }
+
+    pub async fn is_member(db: &Pool<Sqlite>, user_id: i64, project_id: i64) -> bool {
+        sqlx::query_as::<_, ValueInt>("select count(*) from project_members where (user_id = $1) and (project_id = $2);")
+            .bind(user_id)
+            .bind(project_id)
+            .fetch_one(db)
+            .await
+            .unwrap().0 >= 1
     }
 }

@@ -23,7 +23,7 @@ impl User {
 
 
 #[post("/", data="<login>")]
-pub async fn test(db: &State<Pool<Sqlite>>, login: LoginInformation) -> String {
+pub async fn ensure_existance(db: &State<Pool<Sqlite>>, login: LoginInformation) -> String {
     let result = login.login(db.inner()).await;
     match result {
         LoginResult::Success(user_id) => {
