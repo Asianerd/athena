@@ -44,6 +44,17 @@ impl Task {
             .await
             .unwrap();
     }
+    
+    pub async fn edit_task(db: &Pool<Sqlite>, task_id: i64, title: String, description: String, parent: i64) {
+        sqlx::query("update task set title = $1, description = $2, parent = $3 where id = $4;")
+            .bind(title)
+            .bind(description)
+            .bind(parent)
+            .bind(task_id)
+            .execute(db)
+            .await
+            .unwrap();
+    }
 
     pub async fn delete_task(db: &Pool<Sqlite>, task_id: i64) {
         sqlx::query("delete from task where id = $1")
@@ -96,8 +107,26 @@ pub async fn delete(db: &State<Pool<Sqlite>>, login: LoginInformation, project_i
         LoginResult::Success(u) => {
             if ProjectMembers::is_member(db, u, project_id).await {
                 Task::delete_task(db, task_id).await;
-
                 return utils::parse_response(Ok("deleted"));
+            }
+
+            utils::parse_response(Ok("not a member of project"))
+        },
+        _ => {
+            utils::parse_response(Err(result))
+        }
+    }
+}
+
+#[post("/<project_id>/<task_id>/<title>/<description>/<parent>", data="<login>")]
+pub async fn edit(db: &State<Pool<Sqlite>>, login: LoginInformation, project_id: i64, task_id: i64, title: String, description: String, parent: i64) -> String {
+    let db = db.inner();
+    let result = login.login(&db).await;
+    match result {
+        LoginResult::Success(u) => {
+            if ProjectMembers::is_member(db, u, project_id).await {
+                Task::edit_task(db, task_id, urlencoding::decode(&title).unwrap().to_string(), urlencoding::decode(&description).unwrap().to_string(), parent).await;
+                return utils::parse_response(Ok("edited"));
             }
 
             utils::parse_response(Ok("not a member of project"))
