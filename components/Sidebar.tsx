@@ -1,67 +1,14 @@
-import { colorScheme, defaultFont, defaultFontBold, fontSize } from "@/constants/style";
-import { useState } from "react";
+import { fetchProjects } from "@/app/_layout";
+import { Project } from "@/constants/Project";
+import { colorScheme, defaultFont, defaultFontBold, defaultFontItalic, fontSize } from "@/constants/style";
+import React from "react";
 import { Image, Pressable, Text, View } from "react-native";
 
-// let selected = 0;
-// const [selection, onSelectionChange] = useState(0);
-
-// let projectData = [
-//     {
-//         id: 12345,
-//         title: 'lorem ipsum'
-//     },
-//     {
-//         id: 23456,
-//         title: 'dolor sit amet'
-//     },
-// ];
-
-
-
-// function AllDrawerItems() {
-//     let result = [];
-//     projectData.forEach((e) => {
-//         result.push(<DrawerItem data={e} />)
-//     })
-//     // console.log(result);
-//     return (<View style={{
-//         backgroundColor:'red',
-//         flex:1
-//     }}>
-//         {/* result.map((d) => d) */}
-//     </View>);
-// }
-
-export function CustomDrawerContent(safeAreaInsets: any) {
-    const [selection, changeSelection] = useState(0);
-
-    const [projectData, changeProjectData] = useState([
-        {
-            id: 12345,
-            title: 'lorem ipsum'
-        },
-        {
-            id: 23456,
-            title: 'dolor sit amet'
-        },
-    ]);
-
-    // let projectData = [
-    //     {
-    //         id: 12345,
-    //         title: 'lorem ipsum'
-    //     },
-    //     {
-    //         id: 23456,
-    //         title: 'dolor sit amet'
-    //     },
-    // ];
-
-    function DrawerItem({data} : { data:any }) {
-        console.log()
+export function CustomDrawerContent(safeAreaInsets: any, selection: Project | undefined, changeSelection: any, projectList: {[id: string]: Project}, changeProjectList: any) {
+    function DrawerItem({data} : { data: any }): React.JSX.Element {
         return (
-            <Pressable onPress={() => { changeSelection(data.id); console.log(`open project : ${data.id}`) }} style={{
-                backgroundColor: selection == data.id ? colorScheme.border : '#0000',
+            <Pressable key={data.id} onPress={() => { changeSelection(data); console.log(`open project : ${data.id}`); }} style={{
+                backgroundColor: selection?.id == data.id ? colorScheme.border : '#0000',
                 height:40,
                 width:'100%',
                 marginBottom:10,
@@ -76,15 +23,6 @@ export function CustomDrawerContent(safeAreaInsets: any) {
                 }}>
                     {data.title}
                 </Text>
-                {/* <View style={{
-                    backgroundColor:'blue',
-                    height:40,
-                    width:'100%',
-                    marginBottom:10,
-                    justifyContent:'center',
-                    alignItems:'center'
-                }}>
-                </View> */}
             </Pressable>
         );
     }
@@ -98,27 +36,33 @@ export function CustomDrawerContent(safeAreaInsets: any) {
             paddingHorizontal: 20
         }}>
             <View style={{
-                // backgroundColor:'red',
-                // height:200,
                 flex:1,
                 justifyContent:'center',
-                // alignItems:'center',
                 flexDirection:'column'
             }}>
-                <DrawerItem data={projectData[0]}/>
-                <DrawerItem data={projectData[1]}/>
-                {/* <AllDrawerItems/> */}
                 {
-                    // let result = [];
-                    // projectData.forEach((e) => {
-                    //     <DrawerItem data={e} />;
-                    // })
+                    Object.entries(projectList).map(([k, v]) => {
+                        return (
+                            <DrawerItem data={v} />
+                        )
+                    })
                 }
-                {/* <DrawerItem data={} /> */}
+                <Pressable onPress={ async () => { await fetchProjects(changeProjectList); }} style={{
+                    marginTop:15,
+                    width:'100%',
+                }}>
+                    <Text style={{
+                        fontFamily:defaultFontItalic,
+                        color:'#fff8',
+                        textAlign:'center',
+                        textDecorationStyle:'solid',
+                        textDecorationColor:'#fff8'
+                    }}>
+                        refresh
+                    </Text>
+                </Pressable>
             </View>
             <View style={{
-                // backgroundColor:'blue',
-                // height:200,
                 marginTop:20,
                 justifyContent:'space-between',
                 flexDirection:'row'
@@ -132,7 +76,7 @@ export function CustomDrawerContent(safeAreaInsets: any) {
                         // height: 50,
                         width: 25,
                         aspectRatio:1,
-                        marginRight:10
+                        marginRight:15
                     }}/>
                     <Text style={{
                         fontSize:fontSize.small,

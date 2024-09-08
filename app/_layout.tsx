@@ -3,7 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer, StackActions, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import type {PropsWithChildren} from 'react';
 import {
     SafeAreaView,
@@ -24,6 +24,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorScheme, defaultFont, defaultFontBold, fontSize } from '@/constants/style';
 import { CustomDrawerContent } from '@/components/Sidebar';
 
+import GLOBALS from './global';
+import { Project } from '@/constants/Project';
+
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 
@@ -32,11 +35,20 @@ export const screenSize = {
     width: Dimensions.get("window").width
 }
 
+export async function fetchProjects(changeListFunction: any) {
+    try {
+        let response = await Project.fetchProjects();
+        changeListFunction(response);
+    } catch (e) {
+        console.log(`fetchProjects() -> error found : ${e}`);
+    } finally {
+        
+    }
+}
+
 function App(): React.JSX.Element {
     const isDarkMode = useColorScheme() === 'dark';
     const safeAreaInsets = useSafeAreaInsets();
-
-    console.log("test");
 
     const [fontLoaded, fontError] = useFonts({
         'SplineSansMono-Light': require('../assets/fonts/SplineSansMono-Light.ttf'),
@@ -48,7 +60,21 @@ function App(): React.JSX.Element {
         if (fontLoaded || fontError) {
             SplashScreen.hideAsync();
         }
+
+        fetchProjects(changeProjectList);
     }, [fontLoaded, fontError]);
+
+    const [selection, localChangeSelection] = useState<Project | undefined>(GLOBALS.selectedProject);
+    const changeSelection = (t: undefined) => {
+        localChangeSelection(t);
+        GLOBALS.selectedProject = t;
+    }
+
+    const [projectList, localChangeProjectList] = useState<{[id: number]: Project}>([]);
+    const changeProjectList = (l: any) => {
+        localChangeProjectList(l);
+        GLOBALS.projectList = l;
+    }
 
     function StackNavigator() {
         return (
@@ -60,7 +86,7 @@ function App(): React.JSX.Element {
     }
 
     return (
-        <Drawer.Navigator drawerContent={() => { return CustomDrawerContent(safeAreaInsets); }} screenOptions={{
+        <Drawer.Navigator drawerContent={() => { return CustomDrawerContent(safeAreaInsets, selection, changeSelection, projectList, changeProjectList); }} screenOptions={{
             headerShown:false
         }}>
             <Drawer.Screen name="stack" component={StackNavigator} options={({route}: {route:any}) => {

@@ -3,9 +3,14 @@ import { screenSize } from "./_layout";
 import React, { useEffect } from "react";
 import { colorScheme, defaultFont, defaultFontBold, defaultFontItalic, fontSize } from "../constants/style";
 import { SOTERIUS_BACKEND } from "../constants/networking";
+import GLOBALS from './global';
 
 function Login({navigation}: {navigation: any}): React.JSX.Element {
-    navigation.navigate('home', { username:'han_yuji_', password: 'chronos' });
+    useEffect(() => {
+        GLOBALS.username = 'han_yuji_';
+        GLOBALS.password = 'chronos';
+        navigation.navigate('home');
+    })
     // only for debugging
 
     function attemptLogin(username: String, password: String) {
@@ -23,8 +28,11 @@ function Login({navigation}: {navigation: any}): React.JSX.Element {
         .then(
             json => {
                 if (JSON.parse(JSON.stringify(json))['Success'] != undefined) {
+                    GLOBALS.username = username.toString();
+                    GLOBALS.password = password.toString();
+                    
                     // successful login
-                    console.log("logged in");
+                    // console.log("logged in");
                     navigation.navigate('home', { username:username, password: password });
                     onStatusChange('');
                 } else {
@@ -140,7 +148,7 @@ function Login({navigation}: {navigation: any}): React.JSX.Element {
                 marginTop:35,
             }}>
                 <Pressable style={loginStyles.button} onPress={() => {
-                    console.log(`login by ${username} with ${password}`);
+                    // console.log(`login by ${username} with ${password}`);
                     if (state == 'signup') {
                         let result = validatePassword();
                         if (!result.state) {
